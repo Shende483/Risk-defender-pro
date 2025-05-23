@@ -2,9 +2,9 @@ pipeline {
   agent any
 
   environment {
-    FRONTEND_DIR = '/path/to/your/frontend'  // Replace with full path to Vite app
-    BACKEND_DIR = '/path/to/your/backend'    // Replace with full path to NestJS app
-    FRONTEND_PORT = '3030'
+    FRONTEND_DIR = '/frontend'
+    BACKEND_DIR = '/backend'  
+    FROTEND_PORT = '3030'
     BACKEND_PORT = '3040'
   }
 
