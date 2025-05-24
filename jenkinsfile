@@ -1,57 +1,131 @@
 pipeline {
-  agent any
-
-  environment {
-    FRONTEND_DIR = '/frontend'
-    BACKEND_DIR = '/backend'  
-    FROTEND_PORT = '3030'
-    BACKEND_PORT = '3040'
-  }
-
-  stages {
-    stage('Build Frontend') {
-      steps {
-        dir("${env.FRONTEND_DIR}") {
-          sh '''
-            echo "➡️ Installing frontend dependencies"
-            npm install
-
-            echo "🛠️ Building frontend"
-            npm build
-
-            echo "♻️ Restarting frontend with PM2"
-            pm2 delete frontend || true
-            pm2 start "npx serve -s dist -l $FRONTEND_PORT" --name frontend
-          '''
+    agent any
+    
+    environment {
+        // Frontend environment variables
+        VITE_PORT = '3030'
+        VITE_HOST = 'localhost'
+        VITE_BACKEND_PORT = '3040'
+        VITE_BACKEND_IP = 'localhost'
+        
+        // Backend environment variables
+        BACKEND_PORT = '3040'
+        FRONTEND_URL = 'http://localhost:3030'
+        JWT_SECRET = 'your-strong-secret-key' // For local testing only
+        MONGO_URI = 'mongodb://localhost:27017/risk_defender'
+        REDIS_URL = 'redis://localhost:6379'
+        
+        // Build directories
+        FRONTEND_DIR = 'frontend'
+        BACKEND_DIR = 'backend'
+        
+        // Node version
+        NODE_VERSION = '20.x'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
         }
-      }
-    }
-
-    stage('Build Backend') {
-      steps {
-        dir("${env.BACKEND_DIR}") {
-          sh '''
-            echo "➡️ Installing backend dependencies"
-            npm install
-
-            echo "🛠️ Building backend"
-            npm build
-
-            echo "♻️ Restarting backend with PM2"
-            pm2 delete backend || true
-            pm2 start dist/main.js --name backend
-          '''
+        
+        stage('Setup Node.js') {
+            steps {
+                nvm(nodeVersion: env.NODE_VERSION) {
+                    script {
+                        sh 'node --version'
+                        sh 'npm --version'
+                    }
+                }
+            }
         }
-      }
+        
+        stage('Install Dependencies') {
+            parallel {
+                stage('Frontend Dependencies') {
+                    steps {
+                        dir(env.FRONTEND_DIR) {
+                            sh 'npm install'
+                        }
+                    }
+                }
+                stage('Backend Dependencies') {
+                    steps {
+                        dir(env.BACKEND_DIR) {
+                            sh 'npm install'
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Build') {
+            parallel {
+                stage('Build Frontend') {
+                    steps {
+                        dir(env.FRONTEND_DIR) {
+                            sh 'npm run build'
+                        }
+                    }
+                }
+                stage('Build Backend') {
+                    steps {
+                        dir(env.BACKEND_DIR) {
+                            sh 'npm run build'
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Run Services') {
+            steps {
+                script {
+                    // Run backend in background
+                    dir(env.BACKEND_DIR) {
+                        sh 'nohup npm run start:prod > backend.log 2>&1 &'
+                    }
+                    
+                    // Run frontend in background
+                    dir(env.FRONTEND_DIR) {
+                        sh 'nohup npm run preview > frontend.log 2>&1 &'
+                    }
+                    
+                    // Wait for services to start
+                    sleep(time: 10, unit: 'SECONDS')
+                }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    // Verify frontend is running
+                    sh "curl -I http://localhost:${VITE_PORT}"
+                    
+                    // Verify backend is running
+                    sh "curl -I http://localhost:${BACKEND_PORT}/api/health"
+                }
+            }
+        }
     }
-  }
-
-  post {
-    success {
-      echo '✅ Local deployment complete!'
+    
+    post {
+        always {
+            script {
+                // Cleanup - kill running processes
+                sh 'pkill -f "node.*(preview|start:prod)" || true'
+                cleanWs()
+            }
+        }
+        success {
+            echo 'Localhost deployment successful!'
+            echo "Frontend: http://localhost:${VITE_PORT}"
+            echo "Backend: http://localhost:${BACKEND_PORT}"
+        }
+        failure {
+            echo 'Localhost deployment failed! Check logs for details.'
+        }
     }
-    failure {
-      echo '❌ Something went wrong.'
-    }
-  }
 }
