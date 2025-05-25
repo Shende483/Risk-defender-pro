@@ -1,73 +1,37 @@
 pipeline {
     agent any
-
-    environment {
-        FRONTEND_DIR = "frontend"
-        BACKEND_DIR = "backend"
-        FRONTEND_PORT = "3030"
-        BACKEND_PORT = "3040"
-    }
-
+    
     stages {
-        stage('Clone Repo') {
+        stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Shende483/Risk-defender-pro.git'
+                checkout scm
             }
         }
-
-        stage('Install Frontend') {
+        
+        stage('Deploy with Docker Compose') {
             steps {
-                dir("${FRONTEND_DIR}") {
-                    sh 'npm install'
-                }
+                sh 'docker-compose -f docker-compose.local.yml down'
+                sh 'docker-compose -f docker-compose.local.yml up -d --build'
             }
         }
-
-        stage('Build Frontend') {
+        
+        stage('Verify') {
             steps {
-                dir("${FRONTEND_DIR}") {
-                    sh 'npm run build'
-                }
-            }
-        }
-
-        stage('Serve Frontend (Local)') {
-            steps {
-                dir("${FRONTEND_DIR}") {
-                    sh """
-                        pm2 delete frontend || true
-                        pm2 serve dist ${FRONTEND_PORT} --spa --name frontend
-                    """
-                }
-            }
-        }
-
-        stage('Install Backend') {
-            steps {
-                dir("${BACKEND_DIR}") {
-                    sh 'npm install'
-                }
-            }
-        }
-
-        stage('Run Backend (Local)') {
-            steps {
-                dir("${BACKEND_DIR}") {
-                    sh """
-                        pm2 delete backend || true
-                        pm2 start main.js --name backend --watch
-                    """
-                }
+                sleep(time: 30, unit: 'SECONDS')
+                sh "curl -I http://localhost:3030"
+                sh "curl -I http://localhost:3040/api/health"
             }
         }
     }
-
+    
     post {
-        success {
-            echo "✅ App is running locally on localhost:${FRONTEND_PORT} and ${BACKEND_PORT}"
+        always {
+            echo 'Cleanup may be needed with: docker-compose -f docker-compose.local.yml down'
         }
-        failure {
-            echo "❌ Something went wrong!"
+        success {
+            echo 'Services running:'
+            echo 'Frontend: http://localhost:3030'
+            echo 'Backend: http://localhost:3040'
         }
     }
 }
