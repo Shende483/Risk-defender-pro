@@ -12,7 +12,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: '<your-git-repo-url>'
+                git branch: 'main', url: 'https://github.com/Shende483/Risk-defender-pro.git'
             }
         }
         stage('Install Dependencies') {
