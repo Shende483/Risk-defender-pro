@@ -1,131 +1,78 @@
 pipeline {
     agent any
-    
-    environment {
-        // Frontend environment variables
-        VITE_PORT = '3030'
-        VITE_HOST = 'localhost'
-        VITE_BACKEND_PORT = '3040'
-        VITE_BACKEND_IP = 'localhost'
-        
-        // Backend environment variables
-        BACKEND_PORT = '3040'
-        FRONTEND_URL = 'http://localhost:3030'
-        JWT_SECRET = 'your-strong-secret-key' // For local testing only
-        MONGO_URI = 'mongodb://localhost:27017/risk_defender'
-        REDIS_URL = 'redis://localhost:6379'
-        
-        // Build directories
-        FRONTEND_DIR = 'frontend'
-        BACKEND_DIR = 'backend'
-        
-        // Node version
-        NODE_VERSION = '20.x'
+    tools {
+        nodejs 'Node-20'
     }
-    
+    environment {
+        MONGO_URI = credentials('mongo-uri')
+        REDIS_URL = credentials('redis-url')
+        KAFKA_BROKERS = credentials('kafka-brokers')
+        JWT_SECRET = credentials('jwt-secret')
+    }
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                git branch: 'main', url: '<your-git-repo-url>'
             }
         }
-        
-        stage('Setup Node.js') {
-            steps {
-                nvm(nodeVersion: env.NODE_VERSION) {
-                    script {
-                        sh 'node --version'
-                        sh 'npm --version'
-                    }
-                }
-            }
-        }
-        
         stage('Install Dependencies') {
-            parallel {
-                stage('Frontend Dependencies') {
-                    steps {
-                        dir(env.FRONTEND_DIR) {
-                            sh 'npm install'
-                        }
-                    }
+            steps {
+                dir('frontend') {
+                    sh 'yarn install --frozen-lockfile'
                 }
-                stage('Backend Dependencies') {
-                    steps {
-                        dir(env.BACKEND_DIR) {
-                            sh 'npm install'
-                        }
-                    }
+                dir('backend') {
+                    sh 'yarn install --frozen-lockfile'
                 }
             }
         }
-        
+        stage('Lint and Test') {
+            steps {
+                dir('frontend') {
+                    sh 'yarn lint'
+                    sh 'yarn fm:check'
+                }
+                dir('backend') {
+                    sh 'yarn lint'
+                    sh 'yarn test'
+                }
+            }
+        }
         stage('Build') {
-            parallel {
-                stage('Build Frontend') {
-                    steps {
-                        dir(env.FRONTEND_DIR) {
-                            sh 'npm run build'
-                        }
-                    }
+            steps {
+                dir('frontend') {
+                    sh 'yarn build'
                 }
-                stage('Build Backend') {
-                    steps {
-                        dir(env.BACKEND_DIR) {
-                            sh 'npm run build'
-                        }
-                    }
+                dir('backend') {
+                    sh 'yarn build'
                 }
             }
         }
-        
-        stage('Run Services') {
+        stage('Build Docker Images') {
             steps {
-                script {
-                    // Run backend in background
-                    dir(env.BACKEND_DIR) {
-                        sh 'nohup npm run start:prod > backend.log 2>&1 &'
-                    }
-                    
-                    // Run frontend in background
-                    dir(env.FRONTEND_DIR) {
-                        sh 'nohup npm run preview > frontend.log 2>&1 &'
-                    }
-                    
-                    // Wait for services to start
-                    sleep(time: 10, unit: 'SECONDS')
+                dir('frontend') {
+                    sh 'docker build -t trading-frontend:latest -f Dockerfile.frontend .'
+                }
+                dir('backend') {
+                    sh 'docker build -t trading-backend:latest -f Dockerfile.backend .'
                 }
             }
         }
-        
-        stage('Verify Deployment') {
+        stage('Deploy Locally') {
             steps {
-                script {
-                    // Verify frontend is running
-                    sh "curl -I http://localhost:${VITE_PORT}"
-                    
-                    // Verify backend is running
-                    sh "curl -I http://localhost:${BACKEND_PORT}/api/health"
-                }
+                sh 'docker-compose -f docker-compose.yml up -d --build'
             }
         }
     }
-    
     post {
         always {
-            script {
-                // Cleanup - kill running processes
-                sh 'pkill -f "node.*(preview|start:prod)" || true'
-                cleanWs()
-            }
+            echo 'Cleaning up...'
+            sh 'docker-compose -f docker-compose.yml down || true'
         }
         success {
-            echo 'Localhost deployment successful!'
-            echo "Frontend: http://localhost:${VITE_PORT}"
-            echo "Backend: http://localhost:${BACKEND_PORT}"
+            echo 'Local deployment successful! Access frontend at http://localhost:3030'
         }
         failure {
-            echo 'Localhost deployment failed! Check logs for details.'
+            echo 'Local deployment failed!'
         }
     }
 }
