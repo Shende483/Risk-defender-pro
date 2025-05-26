@@ -1,78 +1,89 @@
 pipeline {
     agent any
-    tools {
-        nodejs 'Node-20'
-    }
+
     environment {
-        MONGO_URI = credentials('mongo-uri')
-        REDIS_URL = credentials('redis-url')
-        KAFKA_BROKERS = credentials('kafka-brokers')
-        JWT_SECRET = credentials('jwt-secret')
+        // Set any environment variables here, like NODE_ENV or API keys
+        // Example: NODE_ENV = 'production'
     }
+
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/Shende483/Risk-defender-pro.git'
             }
         }
-        stage('Install Dependencies') {
+
+        stage('Install Frontend Dependencies') {
             steps {
                 dir('frontend') {
-                    sh 'yarn install --frozen-lockfile'
-                }
-                dir('backend') {
-                    sh 'yarn install --frozen-lockfile'
+                    sh 'npm install'
                 }
             }
         }
-        stage('Lint and Test') {
+
+        stage('Install Backend Dependencies') {
             steps {
-                dir('frontend') {
-                    sh 'yarn lint'
-                    sh 'yarn fm:check'
-                }
                 dir('backend') {
-                    sh 'yarn lint'
-                    sh 'yarn test'
+                    sh 'npm install'
                 }
             }
         }
-        stage('Build') {
+
+        stage('Build Frontend') {
             steps {
                 dir('frontend') {
-                    sh 'yarn build'
-                }
-                dir('backend') {
-                    sh 'yarn build'
+                    sh 'npm run build' // Adjust if your build command is different
                 }
             }
         }
-        stage('Build Docker Images') {
+
+        stage('Build Backend') {
             steps {
-                dir('frontend') {
-                    sh 'docker build -t trading-frontend:latest -f Dockerfile.frontend .'
-                }
                 dir('backend') {
-                    sh 'docker build -t trading-backend:latest -f Dockerfile.backend .'
+                    sh 'npm run build' // Adjust if your backend has a build step
                 }
             }
         }
-        stage('Deploy Locally') {
+
+        stage('Test Frontend') {
             steps {
-                sh 'docker-compose -f docker-compose.yml up -d --build'
+                dir('frontend') {
+                    sh 'npm test' // Adjust if needed
+                }
+            }
+        }
+
+        stage('Test Backend') {
+            steps {
+                dir('backend') {
+                    sh 'npm test' // Adjust if needed
+                }
+            }
+        }
+
+        stage('Deploy Frontend') {
+            steps {
+                // Replace with your actual frontend deployment commands
+                echo 'Deploying frontend...'
+                // Example: sh './deploy-frontend.sh'
+            }
+        }
+
+        stage('Deploy Backend') {
+            steps {
+                // Replace with your actual backend deployment commands
+                echo 'Deploying backend...'
+                // Example: sh './deploy-backend.sh'
             }
         }
     }
+
     post {
-        always {
-            echo 'Cleaning up...'
-            sh 'docker-compose -f docker-compose.yml down || true'
-        }
         success {
-            echo 'Local deployment successful! Access frontend at http://localhost:3030'
+            echo 'Deployment successful!'
         }
         failure {
-            echo 'Local deployment failed!'
+            echo 'Deployment failed!'
         }
     }
 }
