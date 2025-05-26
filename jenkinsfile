@@ -73,7 +73,7 @@ pipeline {
         success {
             echo 'Deployment successful!'
         }
-        failure {
+        failure { 
             echo 'Deployment failed!'
         }
     }
