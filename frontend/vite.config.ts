@@ -11,17 +11,16 @@ export default defineConfig(({ mode }) => {
   // Load environment variables
   const env = loadEnv(mode, process.cwd(), '');
 
-  // Define default values for PORT and HOST
-  const PORT = Number(env.VITE_PORT) || 3030; // Set to 3030 to match your logs
-  const HOST = env.VITE_HOST || 'localhost';
-
   return {
+    // Base path for Cloudflare Pages (empty for root, '/subpath/' if needed)
+    base: '/',
+    
     plugins: [
       react(),
       checker({
         typescript: true,
         eslint: {
-          lintCommand: 'eslint "./src/**/*.{ts,tsx,js,jsx}"', // Correct pattern
+          lintCommand: 'eslint "./src/**/*.{ts,tsx,js,jsx}"',
           dev: {
             logLevel: ['error'],
           },
@@ -32,19 +31,37 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
+    
     resolve: {
       alias: {
         src: path.resolve(__dirname, 'src'),
         '~': path.resolve(__dirname, 'node_modules'),
       },
     },
+    
+    // Server config (for local development only)
     server: {
-      port: PORT,
-      host: HOST,
+      port: Number(env.VITE_PORT) || 3030,
+      host: env.VITE_HOST || 'localhost',
     },
+    
+    // Preview config (for local preview of production build)
     preview: {
-      port: PORT,
-      host: HOST,
+      port: Number(env.VITE_PORT) || 3030,
+      host: env.VITE_HOST || 'localhost',
+    },
+    
+    // Build-specific settings
+    build: {
+      outDir: 'dist', // Explicit output directory
+      emptyOutDir: true, // Clear the directory before building
+      sourcemap: mode !== 'production', // Disable sourcemaps in production
+      chunkSizeWarningLimit: 1600, // Adjust chunk size warning
+    },
+    
+    // Optimize for Cloudflare
+    esbuild: {
+      drop: mode === 'production' ? ['console', 'debugger'] : [],
     },
   };
 });
