@@ -20,3 +20,4 @@ export interface tradingType {
   _id: string;
   brokerName: string;
   brokerAccountName: string;
+}
