@@ -37,24 +37,17 @@ export default class BaseService {
     headers: this.header,
   });
 
-  // Static initializer block to set up interceptors and fetch IP
   private static initialize() {
-    // Add request interceptor to include IP, timestamp, and dynamic token
     this.api.interceptors.request.use(
       (config) => {
-        // Fetch the latest access token from localStorage
         const currentToken = localStorage.getItem('accessToken');
-        // Log the token for debugging
         console.log('Sending request with token:', currentToken || 'No token found');
-        // Update Authorization header for this request
         config.headers.Authorization = `Bearer ${currentToken || ''}`;
 
-        // Generate fresh timestamp for each request
         const timestamp = new Date().toISOString();
         config.headers['X-Request-Timestamp'] = timestamp;
         config.headers['X-Client-Ip'] = this.clientIp;
 
-        // Ensure params exist and add timestamp and IP
         config.params = config.params || {};
         config.params.timestamp = timestamp;
         config.params.clientIp = this.clientIp;
@@ -67,7 +60,6 @@ export default class BaseService {
       }
     );
 
-    // Add response interceptor to handle token expiration
     this.api.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
@@ -77,37 +69,31 @@ export default class BaseService {
           (error.response.data as any)?.message?.includes('jwt expired') &&
           !originalRequest._retry
         ) {
-          originalRequest._retry = true; // Prevent infinite retry loops
+          originalRequest._retry = true;
           console.log('Token expired, attempting to refresh...');
 
           try {
-            // Fetch refresh token from localStorage
             const refreshToken = localStorage.getItem('refreshToken');
             if (!refreshToken) {
               console.error('No refresh token found');
               return Promise.reject(new Error('No refresh token available'));
             }
 
-            // Call refresh token endpoint
             const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, {
               refreshToken,
             });
 
-            // Assuming backend returns new access token in response.data.access_token
             const newAccessToken = refreshResponse.data.access_token;
             if (!newAccessToken) {
               console.error('No new access token received');
               return Promise.reject(new Error('Failed to refresh token'));
             }
 
-            // Update localStorage with new access token
             localStorage.setItem('accessToken', newAccessToken);
             console.log('Token refreshed, new token:', newAccessToken);
 
-            // Update original request with new token
             originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
-            // Retry the original request
             return this.api(originalRequest);
           } catch (refreshError) {
             console.error('Token refresh failed:', refreshError);
@@ -125,22 +111,19 @@ export default class BaseService {
       }
     );
 
-    // Fetch client IP
     this.fetchClientIp();
   }
 
-  // Method to fetch client IP
   private static async fetchClientIp() {
     try {
       const response = await axios.get('https://api.ipify.org?format=json');
       this.clientIp = response.data.ip || 'unknown';
     } catch (error) {
       console.error('Failed to fetch client IP:', error);
-      this.clientIp = 'unknown'; // Fallback value
+      this.clientIp = 'unknown';
     }
   }
 
-  // Call initialize statically
   static {
     this.initialize();
   }
@@ -153,7 +136,6 @@ export default class BaseService {
     return this.userId;
   }
 
-  // In BaseService.ts
   protected static async handleRequest<T>(
     request: Promise<AxiosResponse<ApiResponse<T>>>
   ): Promise<ApiResponse<T>> {
@@ -180,13 +162,12 @@ export default class BaseService {
     }
   }
 
-  // Add this to BaseService class
   public static postLogin(url: string, body: object) {
     return this.api
       .post(url, body)
       .then((response) => {
         if (response.status >= 200 && response.status < 300) {
-          return response.data; // Return the raw data without further processing
+          return response.data;
         }
         throw new Error(response.data.message || 'Request failed');
       })
@@ -200,31 +181,31 @@ export default class BaseService {
       });
   }
 
-  public static post<T>(url: string, body: object) {
-    return this.handleRequest<T>(this.api.post(url, body));
+  public static async post<T>(url: string, body: object): Promise<ApiResponse<T>> {
+    return await this.handleRequest<T>(this.api.post(url, body));
   }
 
-  protected static postParam<T>(url: string, reqParam: unknown) {
-    return this.handleRequest<T>(this.api.post(url, null, { params: reqParam }));
+  protected static async postParam<T>(url: string, reqParam: unknown): Promise<ApiResponse<T>> {
+    return await this.handleRequest<T>(this.api.post(url, null, { params: reqParam }));
   }
 
   protected static async get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    return this.handleRequest<T>(this.api.get(url, config));
+    return await this.handleRequest<T>(this.api.get(url, config));
   }
 
-  protected static getHeaders<T>(url: string, headers: AxiosHeaders) {
-    return this.handleRequest<T>(this.api.get(url, { headers }));
+  protected static async getHeaders<T>(url: string, headers: AxiosHeaders): Promise<ApiResponse<T>> {
+    return await this.handleRequest<T>(this.api.get(url, { headers }));
   }
 
-  protected static getParam<T>(url: string, reqParam: unknown) {
-    return this.handleRequest<T>(this.api.get(url, { params: reqParam }));
+  protected static async getParam<T>(url: string, reqParam: unknown): Promise<ApiResponse<T>> {
+    return await this.handleRequest<T>(this.api.get(url, { params: reqParam }));
   }
 
-  public static put<T>(url: string, body: object) {
-    return this.handleRequest<T>(this.api.put(url, body));
+  public static async put<T>(url: string, body: object): Promise<ApiResponse<T>> {
+    return await this.handleRequest<T>(this.api.put(url, body));
   }
 
-  protected static delete<T>(url: string) {
-    return this.handleRequest<T>(this.api.delete(url));
+  protected static async delete<T>(url: string): Promise<ApiResponse<T>> {
+    return await this.handleRequest<T>(this.api.delete(url));
   }
 }
