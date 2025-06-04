@@ -142,7 +142,7 @@ export function MyAccountsDetails({ onTradingRulesChange }: MyAccountsDetailsPro
       setSelectedMarketTypeId(marketTypes[0].shortName);
       fetchBrokersByMarketType(marketTypes[0].shortName);
     }
-  }, [marketTypes, selectedMarketTypeId]); // Added dependencies
+  }, [marketTypes, selectedMarketTypeId]); 
 
   return (
     <div>
