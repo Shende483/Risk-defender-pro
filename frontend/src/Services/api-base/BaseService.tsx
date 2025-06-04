@@ -3,6 +3,7 @@ this.api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
+    // Check if token expired
     if (
       error.response?.status === 403 &&
       (error.response.data as any)?.message?.includes('jwt expired') &&
@@ -15,7 +16,7 @@ this.api.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
         if (!refreshToken) {
           console.error('No refresh token found');
-          return await Promise.reject(new Error('No refresh token available'));
+          return Promise.reject(new Error('No refresh token available'));
         }
 
         const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, {
@@ -29,26 +30,29 @@ this.api.interceptors.response.use(
         }
 
         localStorage.setItem('accessToken', newAccessToken);
-        console.log('Token refreshed, new token:', newAccessToken);
+        console.log('Token refreshed successfully');
 
-        // Update the original request's authorization header
+        // Update the authorization header
         originalRequest.headers = {
           ...originalRequest.headers,
           Authorization: `Bearer ${newAccessToken}`,
         };
 
-        // Retry the original request using the current axios instance
-        return this.api.request(originalRequest);
+        // Retry the original request
+        return this.api(originalRequest);
       } catch (refreshError) {
         console.error('Token refresh failed:', refreshError);
+        // Clear tokens if refresh failed
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         return Promise.reject(refreshError);
       }
     }
 
-    console.error('API Response Error:', {
-      url: error.config?.url,
+    // For other errors
+    console.error('API Error:', {
+      url: originalRequest.url,
       status: error.response?.status,
-      data: error.response?.data,
       message: error.message,
     });
 
