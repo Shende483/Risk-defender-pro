@@ -24,9 +24,9 @@ export default function TradingviewChartAndData() {
   const plusButtonRef = useRef<HTMLButtonElement>(null);
 
   const [theme, setTheme] = useState<string>('dark');
-  const [currentSymbol, setCurrentSymbol] = useState<string>(initialSymbols[0]);
+  #const [currentSymbol, setCurrentSymbol] = useState<string>(initialSymbols[0]);
   const [crosshairPrice, setCrosshairPrice] = useState<number | null>(null);
-  const [savedPrices, setSavedPrices] = useState<number[]>([]);
+  #const [savedPrices, setSavedPrices] = useState<number[]>([]);
   const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
     width: 850,
     height: 570,
