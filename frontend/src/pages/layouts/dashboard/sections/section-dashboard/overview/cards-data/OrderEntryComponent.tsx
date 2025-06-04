@@ -67,7 +67,7 @@ export default function OrderEntryComponentconst({ tradingRules, activeTab, sele
   const [stopLoss, setStopLoss] = useState<string>('');
   const [entryPrice, setEntryPrice] = useState<string>('');
   const [targetPrice, setTargetPrice] = useState<string>('');
-  const [marketTypes, setMarketTypes] = useState<MarketType[]>([]);
+  #const [marketTypes, setMarketTypes] = useState<MarketType[]>([]);
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
   const [showSnackbar, setShowSnackbar] = useState<boolean>(false);
 
