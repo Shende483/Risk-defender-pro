@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
-
 import { useTheme } from '@mui/material/styles';
 import { Tab, Card, Tabs, List, Select, MenuItem, ListItem, InputLabel, Typography, FormControl, ListItemText } from '@mui/material';
-
 import BrokerService from '../../../../../../../Services/api-services/market-Type-Mana';
-
 import type { TradingRulesData } from '../../view';
 import type { BrokerAccount } from '../../../../../../../Services/api-services/market-Type-Mana';
 
@@ -50,14 +47,11 @@ interface TradingRule {
 
 interface MyAccountsDetailsProps {
   onTradingRulesChange?: (data: TradingRulesData) => void;
- // selectedMarketTypeId: string;
- // setSelectedMarketTypeId: (tab: string) => void;
 }
 
 export function MyAccountsDetails({ onTradingRulesChange }: MyAccountsDetailsProps) {
   const theme = useTheme();
-   const [selectedMarketTypeId, setSelectedMarketTypeId] = useState('');
-
+  const [selectedMarketTypeId, setSelectedMarketTypeId] = useState('');
   const [selectedBrokerId, setSelectedBrokerId] = useState('');
   const [selectedSubbroker, setSelectedSubbroker] = useState('');
   const [marketTypes] = useState<MarketType[]>([
@@ -143,200 +137,143 @@ export function MyAccountsDetails({ onTradingRulesChange }: MyAccountsDetailsPro
     fetchBrokersByMarketType(marketType);
   };
 
-  const handleSubmit = async () => {
-    if (selectedBrokerId && selectedSubbroker && selectedTradingType) {
-      const rules = await fetchTradingRules(
-        selectedSubbroker,
-        selectedTradingType
-      );
-      if (rules && onTradingRulesChange && selectedBrokerAccount) {
-        onTradingRulesChange({
-          brokerAccountName: selectedBrokerAccount.brokerAccountName,
-          marketTypeId: selectedMarketTypeId,
-          brokerId: selectedBrokerId,
-          cash: rules.cash,
-          option: rules.option,
-          future: rules.future,
-        });
-      }
-    }
-  };
-
   useEffect(() => {
     if (marketTypes.length > 0 && !selectedMarketTypeId) {
       setSelectedMarketTypeId(marketTypes[0].shortName);
       fetchBrokersByMarketType(marketTypes[0].shortName);
     }
-  }, []);
+  }, [marketTypes, selectedMarketTypeId]); // Added dependencies
 
   return (
-   
+    <div>
+      <Card sx={{ ...CardWrapper({ theme }), height: '100%' }}>
+        <Tabs value={selectedMarketTypeId}>
+          {marketTypes.map((marketType) => (
+            <Tab
+              key={marketType.shortName}
+              label={<span style={{ fontWeight: 'bold' }}>{marketType.shortName}</span>}
+              value={marketType.shortName}
+              onClick={() => handleTabChange(marketType.shortName)}
+              sx={{ gap: 8 }}
+            />
+          ))}
+        </Tabs>
 
-<div>
-
-
-        <Card sx={{ ...CardWrapper({ theme }), height: '100%' }}>
-      <Tabs value={selectedMarketTypeId}>
-        {marketTypes.map((marketType) => (
-          <Tab
-            key={marketType.shortName}
-            label={<span style={{ fontWeight: 'bold' }}>{marketType.shortName}</span>}
-            value={marketType.shortName}
-            onClick={() => handleTabChange(marketType.shortName)}
-            sx={{ gap: 8 }}
-          />
-        ))}
-      </Tabs>
-
-      <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'column', gap: '16px', padding: '16px' }}>
-        <FormControl fullWidth variant="filled" sx={{ minWidth: 200 }}>
-          <InputLabel>Broker</InputLabel>
-          <Select
-            value={selectedBrokerId}
-            onChange={(e) => {
-              setSelectedBrokerId(e.target.value);
-              setSubBrokers([]);
-              setSelectedSubbroker('');
-              setSelectedTradingType('');
-              setTradingRules([]);
-              fetchSubBrokers(selectedMarketTypeId, e.target.value);
-            }}
-            disabled={loading || brokers.length === 0}
-          >
-            <MenuItem value="">
-              <em>Select Broker</em>
-            </MenuItem>
-            {uniqueBrokers.map((broker) => (
-              <MenuItem key={broker._id} value={broker._id}>
-                {broker.brokerName}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl fullWidth variant="filled" sx={{ minWidth: 200 }}>
-          <InputLabel>Sub-broker</InputLabel>
-          <Select
-            value={selectedSubbroker}
-            onChange={(e) => {
-              const selectedAccount = subBrokers.find((b) => b._id === e.target.value);
-              if (selectedAccount) {
-                setSelectedSubbroker(e.target.value);
-                setSelectedBrokerAccount(selectedAccount);
-                setSelectedTradingType('future');
+        <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'column', gap: '16px', padding: '16px' }}>
+          <FormControl fullWidth variant="filled" sx={{ minWidth: 200 }}>
+            <InputLabel>Broker</InputLabel>
+            <Select
+              value={selectedBrokerId}
+              onChange={(e) => {
+                setSelectedBrokerId(e.target.value);
+                setSubBrokers([]);
+                setSelectedSubbroker('');
+                setSelectedTradingType('');
                 setTradingRules([]);
-              }
-            }}
-            disabled={loading || subBrokers.length === 0 || !selectedBrokerId}
-          >
-            <MenuItem value="">
-              <em>Select Sub-broker</em>
-            </MenuItem>
-            {subBrokers.map((broker) => (
-              <MenuItem key={broker._id} value={broker._id}>
-                {broker.brokerAccountName}
+                fetchSubBrokers(selectedMarketTypeId, e.target.value);
+              }}
+              disabled={loading || brokers.length === 0}
+            >
+              <MenuItem value="">
+                <em>Select Broker</em>
               </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+              {uniqueBrokers.map((broker) => (
+                <MenuItem key={broker._id} value={broker._id}>
+                  {broker.brokerName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-        <FormControl fullWidth variant="filled" sx={{ minWidth: 200 }}>
-          <InputLabel>Trading Type</InputLabel>
-          <Select
-            value={selectedTradingType}
-            onChange={(e) => {
-              setSelectedTradingType(e.target.value);
-              if (selectedBrokerId && selectedSubbroker) {
-                fetchTradingRules(
-                  selectedSubbroker,
-                  e.target.value
-                ).then((rules) => {
-                  if (rules && onTradingRulesChange && selectedBrokerAccount) {
-                    onTradingRulesChange({
-                      brokerAccountName: selectedBrokerAccount.brokerAccountName,
-                      marketTypeId: selectedMarketTypeId,
-                      brokerId: selectedBrokerId,
-                      cash: rules.cash,
-                      option: rules.option,
-                      future: rules.future,
-                    });
-                  }
-                });
-              }
-            }}
-            disabled={loading || !selectedSubbroker}
-          >
-            <MenuItem value="">
-              <em>Select Trading Type</em>
-            </MenuItem>
-            {tradingTypes.map((type) => (
-              <MenuItem key={type.id} value={type.id}>
-                {type.name}
+          <FormControl fullWidth variant="filled" sx={{ minWidth: 200 }}>
+            <InputLabel>Sub-broker</InputLabel>
+            <Select
+              value={selectedSubbroker}
+              onChange={(e) => {
+                const selectedAccount = subBrokers.find((b) => b._id === e.target.value);
+                if (selectedAccount) {
+                  setSelectedSubbroker(e.target.value);
+                  setSelectedBrokerAccount(selectedAccount);
+                  setSelectedTradingType('future');
+                  setTradingRules([]);
+                }
+              }}
+              disabled={loading || subBrokers.length === 0 || !selectedBrokerId}
+            >
+              <MenuItem value="">
+                <em>Select Sub-broker</em>
               </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-         </div>
-</Card>
+              {subBrokers.map((broker) => (
+                <MenuItem key={broker._id} value={broker._id}>
+                  {broker.brokerAccountName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-
-
-  <Card sx={{ ...CardWrapper({ theme }), height: '100%' }}>
-        {tradingRules.length > 0 ? (
-        <div style={{ width: '100%' }}>
-          <Typography variant="h6" gutterBottom>
-            Trading Rules
-          </Typography>
-          <List>
-            {tradingRules.map((rule, index) => (
-              <ListItem key={index}>
-                <ListItemText
-                  primary={rule.key}
-                  secondary={rule.value}
-                  primaryTypographyProps={{ fontWeight: 'bold' }}
-                />
-              </ListItem>
-            ))}
-          </List>
+          <FormControl fullWidth variant="filled" sx={{ minWidth: 200 }}>
+            <InputLabel>Trading Type</InputLabel>
+            <Select
+              value={selectedTradingType}
+              onChange={(e) => {
+                setSelectedTradingType(e.target.value);
+                if (selectedBrokerId && selectedSubbroker) {
+                  fetchTradingRules(
+                    selectedSubbroker,
+                    e.target.value
+                  ).then((rules) => {
+                    if (rules && onTradingRulesChange && selectedBrokerAccount) {
+                      onTradingRulesChange({
+                        brokerAccountName: selectedBrokerAccount.brokerAccountName,
+                        marketTypeId: selectedMarketTypeId,
+                        brokerId: selectedBrokerId,
+                        cash: rules.cash,
+                        option: rules.option,
+                        future: rules.future,
+                      });
+                    }
+                  });
+                }
+              }}
+              disabled={loading || !selectedSubbroker}
+            >
+              <MenuItem value="">
+                <em>Select Trading Type</em>
+              </MenuItem>
+              {tradingTypes.map((type) => (
+                <MenuItem key={type.id} value={type.id}>
+                  {type.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </div>
-      ) : (
-        <Typography variant="body1" color="text.secondary">
-          No trading rules available. Please select a trading type.
-        </Typography>
-      )}
-       
-    </Card>
+      </Card>
 
-
-
-     <Card sx={{ ...CardWrapper({ theme }), height: '100%' }}>
+      <Card sx={{ ...CardWrapper({ theme }), height: '100%', marginTop: 2 }}>
         {tradingRules.length > 0 ? (
-        <div style={{ width: '100%' }}>
-          <Typography variant="h6" gutterBottom>
-            Trading Rules
+          <div style={{ width: '100%' }}>
+            <Typography variant="h6" gutterBottom>
+              Trading Rules
+            </Typography>
+            <List>
+              {tradingRules.map((rule, index) => (
+                <ListItem key={index}>
+                  <ListItemText
+                    primary={rule.key}
+                    secondary={rule.value}
+                    primaryTypographyProps={{ fontWeight: 'bold' }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </div>
+        ) : (
+          <Typography variant="body1" color="text.secondary">
+            No trading rules available. Please select a trading type.
           </Typography>
-          <List>
-            {tradingRules.map((rule, index) => (
-              <ListItem key={index}>
-                <ListItemText
-                  primary={rule.key}
-                  secondary={rule.value}
-                  primaryTypographyProps={{ fontWeight: 'bold' }}
-                />
-              </ListItem>
-            ))}
-          </List>
-        </div>
-      ) : (
-        <Typography variant="body1" color="text.secondary">
-          No trading rules available. Please select a trading type.
-        </Typography>
-      )}
-       
-    </Card>
-</div>
-
-
-
+        )}
+      </Card>
+    </div>
   );
 }
