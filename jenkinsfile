@@ -1,28 +1,35 @@
 pipeline {
     agent any
 
+    environment {
+        FRONTEND_DIR = 'frontend'
+        BACKEND_DIR = 'backend'
+    }
+
     stages {
-        stage('Checkout') {
+
+        stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/Shende483/Risk-defender-pro.git'
+                git 'https://github.com/Shende483/Risk-defender-pro.git'
             }
         }
 
-        stage('Install Frontend Dependencies') {
+        stage('Install & Build Frontend') {
             steps {
-                dir('frontend') {
+                dir("${FRONTEND_DIR}") {
                     sh 'npm install'
+                    sh 'npm run build'
                 }
             }
         }
 
-        stage('Install Backend Dependencies') {
+        stage('Install & Start Backend') {
             steps {
-                dir('backend') {
+                dir("${BACKEND_DIR}") {
                     sh 'npm install'
+                    sh 'pm2 restart backend || pm2 start index.js --name backend'
                 }
             }
         }
-
-   }
+    }
 }
